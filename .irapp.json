@@ -1,0 +1,12 @@
+{
+	"start": {
+		"dev": [
+			"runAsync npm run client-dev-hmr",
+			"run npm run server"
+		],
+		"prod": [
+			"run npm run client-prod",
+			"daemon jardinier2000 npm run server"
+		]
+	}
+}

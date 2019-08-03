@@ -1,0 +1,18 @@
+.dist/
+
+# ---- Automatically generated content by irapp -------------------------------
+# Note: everything below this line will be updated
+
+# Git
+~*
+*.orig
+*.back
+
+# Irapp
+.irapp/*
+!.irapp/assets/
+
+# NodeJs
+node_modules/
+.eslintcache
+.nuxt
