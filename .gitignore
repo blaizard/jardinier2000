@@ -1,5 +1,9 @@
 .dist/
 data/
+npm-debug.log
+
+# Private keys
+server/nodes.json
 
 # ---- Automatically generated content by irapp -------------------------------
 # Note: everything below this line will be updated

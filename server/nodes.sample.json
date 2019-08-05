@@ -1,0 +1,10 @@
+{
+	"keys": {
+		"dsajkwjpjqwnnjaPSKWQK": "sensor-0"
+	},
+	"nodes": {
+		"sensor-0": {
+			"name": "Banana tree"
+		}
+	}
+}
