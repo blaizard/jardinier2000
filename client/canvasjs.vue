@@ -38,7 +38,7 @@
 				let dataList = [];
 				for (const name in this.data) {
 					dataList.push({
-						type: "line",
+						type: "spline",
 						name: name,
 						showInLegend: true,
 						dataPoints: this.data[name]

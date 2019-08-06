@@ -19,7 +19,8 @@
 		data: function() {
 			return {
 				dataList: [],
-				fetchPeriodMs: 3000
+				fetchPeriodMs: 3000,
+				lastSample: 20
 			}
 		},
 		mounted() {
@@ -37,6 +38,7 @@
 								x: new Date(data[0] * 1000),
 								y: data[1][sensorId][type]
 							});
+							this.lastSample = data[1][sensorId][type];
 						}
 					}
 				});
@@ -53,6 +55,9 @@
 				setTimeout(this.fetchSensorData, this.fetchPeriodMs);
 			},
 			async addSample() {
+
+				this.lastSample += Math.random() * 2 - 1;
+
 				await this.fetch("/api/v1/sample", {
 					method: "post",
 					query: {
@@ -61,7 +66,7 @@
 					body: JSON.stringify({
 						list: [{
 							timestamp: 0,
-							humidity: 12
+							humidity: this.lastSample
 						}]
 					}),
 					headers: {
