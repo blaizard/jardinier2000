@@ -61,7 +61,7 @@
 				await this.fetch("/api/v1/sample", {
 					method: "post",
 					query: {
-						key: "SpMAtpJuNScdz77vh6D93V9Ays8KtMS0"
+						token: "SpMAtpJuNScdz77vh6D93V9Ays8KtMS0"
 					},
 					body: JSON.stringify({
 						list: [{

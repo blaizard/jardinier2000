@@ -31,15 +31,15 @@ module.exports = class API {
 
 			// Set the options
 			const options = Object.assign({
-				key: undefined
+				token: undefined
 			}, request.query);
-			Exception.assert(typeof options.key !== "undefined", "The query 'key' must be set.");
-			Exception.assert(Config.nodes.keys.hasOwnProperty(options.key), "The key '" + options.key + "' is not registered.");
+			Exception.assert(typeof options.token !== "undefined", "The query 'token' must be set.");
+			Exception.assert(Config.nodes.tokens.hasOwnProperty(options.token), "The token '" + options.token + "' is not registered.");
 			Exception.assert(request.body instanceof Object, "The body should contain a json formated data, instead received: " + JSON.stringify(request.body));
 			Exception.assert(request.body.hasOwnProperty("list"), "The body should contain a list entry, instead received: " + JSON.stringify(request.body));
 			Exception.assert(request.body.list instanceof Array, "The list should contain a json formated Array, instead received: " + JSON.stringify(request.body));
 
-			const NodeId = Config.nodes.keys[options.key];
+			const NodeId = Config.nodes.tokens[options.token];
 			const timestamp = this.getCurrentTimestamp();
 			const validKeys = {
 				timestamp: "number",
