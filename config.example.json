@@ -1,0 +1,16 @@
+{
+	"port": 443,
+	"key": "blaizard.com.key",
+	"cert": "blaizard.com.cert",
+	"ca": "blaizard.com.ca",
+	"nodes": {
+		"keys": {
+			"SdsajuqweijdkopsPPOJOHoedhwbedu": "sensor-0"
+		},
+		"uids": {
+			"sensor-0": {
+				"name": "Banana tree"
+			}
+		}
+	}
+}

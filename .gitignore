@@ -3,7 +3,7 @@ data/
 npm-debug.log
 
 # Private keys
-server/nodes.json
+config.json
 
 # ---- Automatically generated content by irapp -------------------------------
 # Note: everything below this line will be updated

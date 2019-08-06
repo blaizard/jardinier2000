@@ -4,7 +4,7 @@ const Log = require("../lib/require/log.js")("api");
 const Exception = require("../lib/require/exception.js")("api");
 const Web = require("../lib/require/web.js");
 
-const Nodes = require("./nodes.json");
+const Config = require("../config.json");
 
 module.exports = class API {
 	constructor(web, options = {}) {
@@ -34,12 +34,12 @@ module.exports = class API {
 				key: undefined
 			}, request.query);
 			Exception.assert(typeof options.key !== "undefined", "The query 'key' must be set.");
-			Exception.assert(Nodes.keys.hasOwnProperty(options.key), "The key '" + options.key + "' is not registered.");
+			Exception.assert(Config.nodes.keys.hasOwnProperty(options.key), "The key '" + options.key + "' is not registered.");
 			Exception.assert(request.body instanceof Object, "The body should contain a json formated data, instead received: " + JSON.stringify(request.body));
 			Exception.assert(request.body.hasOwnProperty("list"), "The body should contain a list entry, instead received: " + JSON.stringify(request.body));
 			Exception.assert(request.body.list instanceof Array, "The list should contain a json formated Array, instead received: " + JSON.stringify(request.body));
 
-			const NodeId = Nodes.keys[options.key];
+			const NodeId = Config.nodes.keys[options.key];
 			const timestamp = this.getCurrentTimestamp();
 			const validKeys = {
 				timestamp: "number",

@@ -14,6 +14,9 @@ const TaskManager = require("../lib/require/task/manager-singleton.js");
 // Standard library
 const Path = require("path");
 
+// Config
+const Config = require("../config.json");
+
 (async () => {
 
 	const pathDist = Path.resolve(__dirname, "..", ".dist");
@@ -45,8 +48,11 @@ const Path = require("path");
 	*/
 
 	// Set-up the web server
-	let web = new Web(8001, {
+	let web = new Web(Config.port, {
 		rootDir: pathDist,
+		key: Config.key,
+        cert: Config.cert,
+        ca: Config.ca
 	});
 
 	// Deploy APIs
