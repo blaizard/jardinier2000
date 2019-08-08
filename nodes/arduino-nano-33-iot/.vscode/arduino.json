@@ -1,0 +1,7 @@
+{
+    "sketch": "main.ino",
+    "board": "arduino:samd:nano_33_iot",
+    "output": ".dist",
+    "programmer": "Arduino as ISP",
+    "port": "/dev/ttyACM0"
+}
