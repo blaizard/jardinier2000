@@ -8,7 +8,7 @@
 #include "src/system.h"
 #include "src/topic.h"
 
-#include "src/DHTLib/dht.h"
+#include "src/data/dht.h"
 
 #include <SPI.h>
 #include <WiFiNINA.h>
@@ -61,36 +61,33 @@ void sendData(const int temperature, const int humidity)
   client.println(data);
 }
 
-void setup() {
+void setup()
+{
+  node::system::start();
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-
-  //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-/*  while (!Serial)
-  {
-    delay(1000); // Needed for native USB port only
-  }
-*/
   // Connect to the wifi
   {
+    node::data::DHT dataDht(PIN_A3);
+
     node::wifi::Scope scope(SECRET_SSID, SECRET_PASS);
 
-    dht DHT;
-    DHT.read11(PIN_A3);
-
-    node::log::info<node::wifi::Topic>("Temperature=", DHT.temperature, ", Humidity=", DHT.humidity);
-
     Serial.println("\nStarting connection to server...");
-    // if you get a connection, report back via serial:
     const bool isConnected = client.connect(server, 443);
     node::error::assertTrue<TopicHttp>(isConnected, "Failed to connect to server");
 
-    Serial.println("connected to server");
+    node::log::info<TopicApp>("Connected to server");
+
+    dataDht.start();
+
+    const auto temperature = dataDht.getValue(node::DataType::TEMPERATURE);
+    const auto humidity = dataDht.getValue(node::DataType::HUMIDITY);
+
+    dataDht.stop();
+
+    node::log::info<TopicApp>("Temperature=", temperature, ", Humidity=", humidity);
 
     // Make a HTTP request
-    sendData(DHT.temperature, DHT.humidity);
+    sendData(temperature, humidity);
 
     delay(1000);
 
@@ -112,25 +109,9 @@ void setup() {
     }
   }
 
-  node::log::info<node::wifi::Topic>("Rebooting in 8min...");
-  node::system::rebootAfter8min();
+  node::system::restartAfter8min();
 }
 
-void loop() {
-  // if there are incoming bytes available
-  // from the server, read them and print them:
-  while (client.available()) {
-    char c = client.read();
-    Serial.write(c);
-  }
-
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
-    Serial.println();
-    Serial.println("disconnecting from server.");
-    client.stop();
-
-    // do nothing forevermore:
-    while (true);
-  }
+void loop()
+{
 }

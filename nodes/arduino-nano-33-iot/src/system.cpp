@@ -6,29 +6,38 @@
 namespace
 {
 	template <uint8_t gclkDiv, uint8_t timeoutPeriod>
-	void watchdogSetup()
+	node::uint32_t watchdogSetup()
 	{
+		// Disable watchdog for config
+		WDT->CTRL.reg = 0;
+		while (WDT->STATUS.bit.SYNCBUSY);
+
 		// Divide GLCK2 by 2 ^ (gclkDiv + 1)
-		REG_GCLK_GENDIV = GCLK_GENDIV_DIV(gclkDiv) | GCLK_GENDIV_ID(2);
+		GCLK->GENDIV.reg = GCLK_GENDIV_ID(2) | GCLK_GENDIV_DIV(gclkDiv);
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Use the OSCULP32K for GCLK2, divide it, 50/50 duty cycle, 
-		REG_GCLK_GENCTRL = GCLK_GENCTRL_DIVSEL | GCLK_GENCTRL_IDC | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K | GCLK_GENCTRL_ID(2);   
+		GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(2) | GCLK_GENCTRL_DIVSEL | GCLK_GENCTRL_IDC | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K;   
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Feed GCLK2 to WDT (Watchdog Timer)
-		REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_WDT;
+		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_WDT;
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
-		REG_WDT_CONFIG = timeoutPeriod;
-		while(WDT->STATUS.bit.SYNCBUSY);
-
-		REG_WDT_CTRL = WDT_CTRL_ENABLE;
-		while(WDT->STATUS.bit.SYNCBUSY);
+		// Set period for chip reset
+		WDT->CONFIG.bit.PER = timeoutPeriod;
+		// Disable early warning interrupt
+        WDT->INTENCLR.bit.EW = 1;
+		// Disable window mode
+        WDT->CTRL.bit.WEN = 0;
+        while (WDT->STATUS.bit.SYNCBUSY);
 
 		// Clear the watchdog timer
-		REG_WDT_CLEAR = WDT_CLEAR_CLEAR_KEY;
-		while(WDT->STATUS.bit.SYNCBUSY);
+		WDT->CLEAR.reg = WDT_CLEAR_CLEAR_KEY;
+		while (WDT->STATUS.bit.SYNCBUSY);
+
+		WDT->CTRL.bit.ENABLE = 1; 
+		while (WDT->STATUS.bit.SYNCBUSY);
 
 		// Nb gclk per second, where 0 <= gclkDiv <= 16
 		// nbGclkPerS = (32786 / (2 << gclkDiv))
@@ -36,33 +45,37 @@ namespace
 		// TargetTimeS = timeoutPeriod / (32786 / (2 << gclkDiv))
 		// 16000 / (32786 / (2 ^ (8 + 1)))
 	}
+
+
+	void sleepAndRestart()
+	{
+		// Stop the system
+		node::system::stop();
+
+		// A device enters STANDBY when a Wait For Interrupt (WFI) instruction is executed while SCR.DEEPSLEEP is set to '1'.
+		// An interrupt or the Watch Dog Timer (WDT) will cause the device to wake-up and resume operation.
+		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+
+		// Data sync to ensure outgoing memory accesses complete
+		__DSB();
+		// Wait for interrupt (places device in sleep mode)
+		__WFI();
+
+		node::system::restart();
+	}
 }
 
-void node::system::rebootAfter16s()
+void node::system::start()
 {
-	::watchdogSetup<4, WDT_CONFIG_PER_16K_Val>();
-	sleep();
+	// Switch on builtin LED
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, HIGH);
+
+	// Initialize serial port
+	Serial.begin(9600);
 }
 
-void node::system::rebootAfter1min()
-{
-	::watchdogSetup<6, WDT_CONFIG_PER_16K_Val>();
-	sleep();
-}
-
-void node::system::rebootAfter8min()
-{
-	::watchdogSetup<9, WDT_CONFIG_PER_16K_Val>();
-	sleep();
-}
-
-void node::system::reboot()
-{
-	NVIC_SystemReset();
-	while (true);
-}
-
-void node::system::sleep()
+void node::system::stop()
 {
 	// Save the persisted content
 	persistence::Data.write();
@@ -77,11 +90,31 @@ void node::system::sleep()
 	// Notify that the application is in sleep
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, LOW);
+}
 
-	// A device enters STANDBY when a Wait For Interrupt (WFI) instruction is executed while SCR.DEEPSLEEP is set to '1'.
-	// An interrupt or the Watch Dog Timer (WDT) will cause the device to wake-up and resume operation.
-	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-	__DSB();
-	__WFI();
-	reboot();
+void node::system::restartAfter16s()
+{
+	log::info<Topic>("Restarting in 16s...");
+	::watchdogSetup<4, WDT_CONFIG_PER_16K_Val>();
+	::sleepAndRestart();
+}
+
+void node::system::restartAfter1min()
+{
+	log::info<Topic>("Restarting in 1min...");
+	::watchdogSetup<6, WDT_CONFIG_PER_16K_Val>();
+	::sleepAndRestart();
+}
+
+void node::system::restartAfter8min()
+{
+	log::info<Topic>("Restarting in 8min...");
+	::watchdogSetup<9, WDT_CONFIG_PER_16K_Val>();
+	::sleepAndRestart();
+}
+
+void node::system::restart()
+{
+	NVIC_SystemReset();
+	while (true);
 }

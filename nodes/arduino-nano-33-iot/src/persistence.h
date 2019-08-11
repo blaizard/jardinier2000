@@ -16,9 +16,9 @@ namespace node
 		/**
 		 * Data being persisted
 		 */
-		static struct DataType
+		static struct Data
 		{
-			DataType();
+			Data();
 
 			void read();
 			void write();
@@ -27,7 +27,7 @@ namespace node
 			uint8_t nbMeasurements;
 			struct
 			{
-				SensorType type;
+				::node::DataType type;
 				uint8_t value;
 			} measurements[20];
 		} Data;

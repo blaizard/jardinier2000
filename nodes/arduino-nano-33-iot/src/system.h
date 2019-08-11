@@ -15,11 +15,12 @@ namespace node
 			static constexpr const char* toString = "system";
 		};
 
-		void reboot();
-		void sleep();
+		void start();
+		void stop();
 
-		void rebootAfter16s();
-		void rebootAfter1min();
-		void rebootAfter8min();
+		void restart();
+		void restartAfter16s();
+		void restartAfter1min();
+		void restartAfter8min();
 	}
 }
