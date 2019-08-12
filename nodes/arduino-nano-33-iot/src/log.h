@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types.h"
-#include "time.h"
 
 namespace node
 {
@@ -25,9 +24,6 @@ namespace node
 				if (Serial)
 				{
 					node::string message;
-					message += "[";
-					message += time::getTime();
-					message += "] ";
 					message += pre;
 					message += "[";
 					message += Topic::toString;

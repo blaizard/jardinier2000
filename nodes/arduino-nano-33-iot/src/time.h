@@ -15,8 +15,6 @@ namespace node
 			static constexpr const char* toString = "time";
 		};
 
-		time_type getTime() noexcept;
-
 		/**
 		 * Delay the execution of the program for a certain amount of time.
 		 */

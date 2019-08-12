@@ -1,30 +1,53 @@
 #include "system.h"
-#include "persistence.h"
 
 #include <Arduino.h>
 
 namespace
 {
-	template <uint8_t gclkDiv, uint8_t timeoutPeriod>
-	node::uint32_t watchdogSetup()
+	void watchdogClear()
 	{
+		WDT->CLEAR.reg = WDT_CLEAR_CLEAR_KEY;
+		while (WDT->STATUS.bit.SYNCBUSY);
+	}
+
+	/**
+	 * Generic clock generator 0 8 division factor bits - DIV[7:0]
+	 * Generic clock generator 1 16 division factor bits - DIV[15:0]
+	 * Generic clock generators 2 5 division factor bits - DIV[4:0]
+	 * Generic clock generators 3 - 8 8 division factor bits - DIV[7:0]
+	 */
+	template <uint32_t gclkDiv, uint32_t timeoutPeriod, uint32_t genClk = 3>
+	void watchdogSetup()
+	{
+		static_assert(genClk <= 8);
+
+		static_assert(genClk != 0 || gclkDiv <= 8);
+		static_assert(genClk != 1 || gclkDiv <= 16);
+		static_assert(genClk != 2 || gclkDiv <= 5);
+		static_assert(genClk != 3 || gclkDiv <= 8);
+		static_assert(genClk != 4 || gclkDiv <= 8);
+		static_assert(genClk != 5 || gclkDiv <= 8);
+		static_assert(genClk != 6 || gclkDiv <= 8);
+		static_assert(genClk != 7 || gclkDiv <= 8);
+		static_assert(genClk != 8 || gclkDiv <= 8);
+
 		// Disable watchdog for config
 		WDT->CTRL.reg = 0;
 		while (WDT->STATUS.bit.SYNCBUSY);
-
-		// Divide GLCK2 by 2 ^ (gclkDiv + 1)
-		GCLK->GENDIV.reg = GCLK_GENDIV_ID(2) | GCLK_GENDIV_DIV(gclkDiv);
+	
+		GCLK->GENDIV.reg = GCLK_GENDIV_ID(genClk) | GCLK_GENDIV_DIV(gclkDiv);
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Use the OSCULP32K for GCLK2, divide it, 50/50 duty cycle, 
-		GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(2) | GCLK_GENCTRL_DIVSEL | GCLK_GENCTRL_IDC | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K;   
+		GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(genClk) | GCLK_GENCTRL_DIVSEL | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K;   
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Feed GCLK2 to WDT (Watchdog Timer)
-		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2 | GCLK_CLKCTRL_ID_WDT;
+		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_GEN(genClk) | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_ID_WDT;
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Set period for chip reset
+		WDT->CONFIG.bit.WINDOW = 0;
 		WDT->CONFIG.bit.PER = timeoutPeriod;
 		// Disable early warning interrupt
         WDT->INTENCLR.bit.EW = 1;
@@ -33,8 +56,7 @@ namespace
         while (WDT->STATUS.bit.SYNCBUSY);
 
 		// Clear the watchdog timer
-		WDT->CLEAR.reg = WDT_CLEAR_CLEAR_KEY;
-		while (WDT->STATUS.bit.SYNCBUSY);
+		watchdogClear();
 
 		WDT->CTRL.bit.ENABLE = 1; 
 		while (WDT->STATUS.bit.SYNCBUSY);
@@ -43,9 +65,8 @@ namespace
 		// nbGclkPerS = (32786 / (2 << gclkDiv))
 		// TargetTimeS * nbGclkPerS = timeoutPeriod
 		// TargetTimeS = timeoutPeriod / (32786 / (2 << gclkDiv))
-		// 16000 / (32786 / (2 ^ (8 + 1)))
+		// 16000 / (32786 / (2 ^ (9 + 1)))
 	}
-
 
 	void sleepAndRestart()
 	{
@@ -72,14 +93,11 @@ void node::system::start()
 	digitalWrite(LED_BUILTIN, HIGH);
 
 	// Initialize serial port
-	Serial.begin(9600);
+	Serial.begin(115200);
 }
 
 void node::system::stop()
 {
-	// Save the persisted content
-	persistence::Data.write();
-
 	// Disconnect the USB device
 	USBDevice.detach();
 	USBDevice.end();
@@ -94,7 +112,7 @@ void node::system::stop()
 
 void node::system::restartAfter16s()
 {
-	log::info<Topic>("Restarting in 16s...");
+	log::info<Topic>("Restarting in 1min...");
 	::watchdogSetup<4, WDT_CONFIG_PER_16K_Val>();
 	::sleepAndRestart();
 }
@@ -109,7 +127,21 @@ void node::system::restartAfter1min()
 void node::system::restartAfter8min()
 {
 	log::info<Topic>("Restarting in 8min...");
-	::watchdogSetup<9, WDT_CONFIG_PER_16K_Val>();
+	::watchdogSetup<9, WDT_CONFIG_PER_16K_Val, 1>();
+	::sleepAndRestart();
+}
+
+void node::system::restartAfter16min()
+{
+	log::info<Topic>("Restarting in 16min...");
+	::watchdogSetup<10, WDT_CONFIG_PER_16K_Val, 1>();
+	::sleepAndRestart();
+}
+
+void node::system::restartAfter32min()
+{
+	log::info<Topic>("Restarting in 32min...");
+	::watchdogSetup<11, WDT_CONFIG_PER_16K_Val, 1>();
 	::sleepAndRestart();
 }
 

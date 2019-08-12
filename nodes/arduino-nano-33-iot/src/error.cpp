@@ -3,5 +3,5 @@
 
 void node::error::internal::fatal()
 {
-	system::restartAfter1min();
+	system::restartAfter8min();
 }

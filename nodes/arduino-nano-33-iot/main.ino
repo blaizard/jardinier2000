@@ -7,13 +7,11 @@
 #include "src/wifi.h"
 #include "src/system.h"
 #include "src/topic.h"
+#include "src/array.h"
 
 #include "src/data/dht.h"
 
-#include <SPI.h>
 #include <WiFiNINA.h>
-
-char token[] = NODE_TOKEN;
 
 // If you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
@@ -61,55 +59,87 @@ void sendData(const int temperature, const int humidity)
   client.println(data);
 }
 
+void waitForResponse(int timeoutS)
+{
+  while (!client.available() && timeoutS > 0)
+  {
+    delay(1000);
+    --timeoutS;
+  }
+
+  // if there are incoming bytes available
+  // from the server, read them and print them:
+  while (client.available())
+  {
+    char c = client.read();
+    Serial.write(c);
+  }
+}
+
 void setup()
 {
   node::system::start();
 
   // Connect to the wifi
   {
+    // Setup the sensors
     node::data::DHT dataDht(PIN_A3);
+
+    node::Array<node::data::Generator::ptr_type, 1> dataGenerators(&dataDht);
 
     node::wifi::Scope scope(SECRET_SSID, SECRET_PASS);
 
-    Serial.println("\nStarting connection to server...");
-    const bool isConnected = client.connect(server, 443);
+    // Connect to server
+    constexpr const node::uint8_t maxAttempt = 3;
+    node::uint8_t nbAttempt = 0;
+    bool isConnected = false;
+    do
+    {
+      node::log::info<TopicApp>("Starting connection to server... (", nbAttempt + 1, "/", maxAttempt, ")");
+      isConnected = client.connect(server, 443);
+      ++nbAttempt;
+    }
+    while (!isConnected && nbAttempt < maxAttempt);
     node::error::assertTrue<TopicHttp>(isConnected, "Failed to connect to server");
 
+    // Read sensors
     node::log::info<TopicApp>("Connected to server");
 
-    dataDht.start();
+    node::data::Generator::value_type temperature;
+    node::data::Generator::value_type humidity;    
 
-    const auto temperature = dataDht.getValue(node::DataType::TEMPERATURE);
-    const auto humidity = dataDht.getValue(node::DataType::HUMIDITY);
+    for (auto& data : dataGenerators)
+    {
+      data->start();
 
-    dataDht.stop();
+      if (data->isSupportedType(node::DataType::TEMPERATURE))
+      {
+        temperature = data->getValue(node::DataType::TEMPERATURE);
+      }
+      if (data->isSupportedType(node::DataType::HUMIDITY))
+      {
+        humidity = data->getValue(node::DataType::HUMIDITY);
+      }
+
+      data->stop();
+    }
 
     node::log::info<TopicApp>("Temperature=", temperature, ", Humidity=", humidity);
 
     // Make a HTTP request
     sendData(temperature, humidity);
-
-    delay(1000);
-
-    // if there are incoming bytes available
-    // from the server, read them and print them:
-    while (client.available())
-    {
-      char c = client.read();
-      Serial.write(c);
-    }
+    waitForResponse(30);
 
     delay(1000);
 
     if (!client.connected())
     {
-      Serial.println();
-      Serial.println("disconnecting from server.");
+      node::log::info<TopicApp>("Disconnecting from server");
       client.stop();
     }
   }
 
-  node::system::restartAfter8min();
+  node::system::restartAfter32min();
 }
 
 void loop()

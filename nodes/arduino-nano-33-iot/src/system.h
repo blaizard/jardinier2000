@@ -22,5 +22,7 @@ namespace node
 		void restartAfter16s();
 		void restartAfter1min();
 		void restartAfter8min();
+		void restartAfter16min();
+		void restartAfter32min();
 	}
 }

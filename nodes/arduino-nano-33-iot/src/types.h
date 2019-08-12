@@ -49,6 +49,7 @@ namespace node
 	using int32_t = int32_t;
 	using int64_t = int64_t;
 	using string = String;
+	using size_t = uint32_t;
 
 	using PinType = uint8_t;
 
