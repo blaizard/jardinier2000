@@ -16,7 +16,7 @@ namespace node
 		{
 		public:
 			using ptr_type = Generator*;
-			using value_type = uint16_t;
+			using value_type = uint8_t;
 
 			Generator(const DataType supportedTypes)
 					: m_supportedTypes(supportedTypes)

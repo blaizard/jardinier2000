@@ -10,6 +10,7 @@
 #include "src/array.h"
 
 #include "src/data/dht.h"
+#include "src/data/analog.h"
 
 #include <WiFiNINA.h>
 
@@ -32,12 +33,16 @@ struct TopicHttp : public ::node::Topic
 // that you want to connect to (port 80 is default for HTTP):
 WiFiSSLClient client;
 
-void sendData(const int temperature, const int humidity)
+void sendData(const int temperature, const int humidity, const int moisture, const int luminosity)
 {
   String data = "{\"list\":[{\"temperature\":";
   data += temperature;
   data += ",\"humidity\":";
   data += humidity;
+  data += ",\"moisture\":";
+  data += moisture;
+  data += ",\"luminosity\":";
+  data += luminosity;
   data += "}]}";
 
   {
@@ -84,8 +89,18 @@ void setup()
   {
     // Setup the sensors
     node::data::DHT dataDht(PIN_A3);
+    node::data::Analog dataPhotoresistor(PIN_A7, node::DataType::LUMINOSITY, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
+      return 255 - value;
+    });
+    node::data::Analog dataMoisture(PIN_A6, node::DataType::MOISTURE, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
+      const auto newValue = 255 - value;
+      if (newValue > 127) {
+        return 255;
+      }
+      return (newValue << 1);
+    });
 
-    node::Array<node::data::Generator::ptr_type, 1> dataGenerators(&dataDht);
+    node::Array<node::data::Generator::ptr_type, 3> dataGenerators(&dataDht, &dataPhotoresistor, &dataMoisture);
 
     node::wifi::Scope scope(SECRET_SSID, SECRET_PASS);
 
@@ -107,6 +122,8 @@ void setup()
 
     node::data::Generator::value_type temperature;
     node::data::Generator::value_type humidity;    
+    node::data::Generator::value_type moisture;    
+    node::data::Generator::value_type luminosity;    
 
     for (auto& data : dataGenerators)
     {
@@ -120,14 +137,22 @@ void setup()
       {
         humidity = data->getValue(node::DataType::HUMIDITY);
       }
+      if (data->isSupportedType(node::DataType::MOISTURE))
+      {
+        moisture = data->getValue(node::DataType::MOISTURE);
+      }
+      if (data->isSupportedType(node::DataType::LUMINOSITY))
+      {
+        luminosity = data->getValue(node::DataType::LUMINOSITY);
+      }
 
       data->stop();
     }
 
-    node::log::info<TopicApp>("Temperature=", temperature, ", Humidity=", humidity);
+    node::log::info<TopicApp>("Temperature=", temperature, ", Humidity=", humidity, ", Moisture=", moisture, ", Luminosity=", luminosity);
 
     // Make a HTTP request
-    sendData(temperature, humidity);
+    sendData(temperature, humidity, moisture, luminosity);
     waitForResponse(30);
 
     delay(1000);
