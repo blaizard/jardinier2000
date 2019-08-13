@@ -87,13 +87,12 @@ module.exports = class API {
 			}, request.query);
 
 			// Return the last 100 points
-			const fromTimestamp = await this.options.timeseries.getTimestamp(-100);
-			const untilTimestamp = await this.options.timeseries.getTimestamp(-1);
+			const lastTimestamp = await this.options.timeseries.getTimestamp(-1);
 
 			let dataList = [];
 			await this.options.timeseries.forEach((timestamp, data) => {
 				dataList.push([timestamp, data]);
-			}, fromTimestamp || undefined, untilTimestamp);
+			}, lastTimestamp - 24 * 60 * 60);
 
 			response.json(dataList);
 
