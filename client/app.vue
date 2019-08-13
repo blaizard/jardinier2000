@@ -2,7 +2,7 @@
 	<div>
 		<button @click="addSample">Add Sample</button>
 		<div v-for="data, index in dataPerType" :key="index">
-			<CanvasJs :data="data"></CanvasJs>
+			<CanvasJs :data="data" :title="index"></CanvasJs>
 		</div>
 	</div>
 </template>

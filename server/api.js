@@ -44,7 +44,9 @@ module.exports = class API {
 			const validKeys = {
 				timestamp: "number",
 				temperature: "number",
-				humidity: "number"
+				humidity: "number",
+				luminosity: "number",
+				moisture: "number"
 			}
 
 			// Must be a list of entries with relative timestamp

@@ -14,7 +14,7 @@
 					animationEnabled: true,
 					theme: "light2",
 					title:{
-						text: "Simple Line Chart"
+						text: this.title
 					},
 					axisX:{
 						valueFormatString: "D MMM HH:mm",
@@ -31,7 +31,8 @@
 			}
 		},
 		props: {
-			data: {required: true}
+			data: {required: true},
+			title: {required: true}
 		},
 		watch: {
 			data() {
