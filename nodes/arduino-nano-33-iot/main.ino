@@ -8,6 +8,7 @@
 #include "src/system.h"
 #include "src/topic.h"
 #include "src/array.h"
+#include "src/vector.h"
 
 #include "src/data/dht.h"
 #include "src/data/analog.h"
@@ -21,11 +22,6 @@ char server[] = "blaizard.com";    // name address for Google (using DNS)
 struct TopicApp : public ::node::Topic
 {
 	static constexpr const char* toString = "app";
-};
-
-struct TopicHttp : public ::node::Topic
-{
-	static constexpr const char* toString = "http";
 };
 
 // Initialize the Ethernet client library
@@ -52,7 +48,7 @@ void sendData(const int temperature, const int humidity, const int moisture, con
     client.println(line);
   }
   client.println("Cookie: irpath=/jardinier2000");
-  client.println("Host: www.blaizard.com");
+  client.println("Host: blaizard.com");
   client.println("Content-Type: application/json; charset=utf-8");
   {
     String line = "Content-Length: ";
@@ -115,15 +111,15 @@ void setup()
       ++nbAttempt;
     }
     while (!isConnected && nbAttempt < maxAttempt);
-    node::error::assertTrue<TopicHttp>(isConnected, "Failed to connect to server");
+    node::error::assertTrue<TopicApp>(isConnected, "Failed to connect to server");
 
     // Read sensors
     node::log::info<TopicApp>("Connected to server");
 
-    node::data::Generator::value_type temperature;
-    node::data::Generator::value_type humidity;    
-    node::data::Generator::value_type moisture;    
-    node::data::Generator::value_type luminosity;    
+    node::Vector<node::data::Generator::value_type, 4> temperature;
+    node::Vector<node::data::Generator::value_type, 4> humidity;    
+    node::Vector<node::data::Generator::value_type, 4> moisture;    
+    node::Vector<node::data::Generator::value_type, 4> luminosity;    
 
     for (auto& data : dataGenerators)
     {
@@ -131,28 +127,28 @@ void setup()
 
       if (data->isSupportedType(node::DataType::TEMPERATURE))
       {
-        temperature = data->getValue(node::DataType::TEMPERATURE);
+        temperature.push_back(data->getValue(node::DataType::TEMPERATURE));
       }
       if (data->isSupportedType(node::DataType::HUMIDITY))
       {
-        humidity = data->getValue(node::DataType::HUMIDITY);
+        humidity.push_back(data->getValue(node::DataType::HUMIDITY));
       }
       if (data->isSupportedType(node::DataType::MOISTURE))
       {
-        moisture = data->getValue(node::DataType::MOISTURE);
+        moisture.push_back(data->getValue(node::DataType::MOISTURE));
       }
       if (data->isSupportedType(node::DataType::LUMINOSITY))
       {
-        luminosity = data->getValue(node::DataType::LUMINOSITY);
+        luminosity.push_back(data->getValue(node::DataType::LUMINOSITY));
       }
 
       data->stop();
     }
 
-    node::log::info<TopicApp>("Temperature=", temperature, ", Humidity=", humidity, ", Moisture=", moisture, ", Luminosity=", luminosity);
+    node::log::info<TopicApp>("Temperature=", temperature[0], ", Humidity=", humidity[0], ", Moisture=", moisture[0], ", Luminosity=", luminosity[0]);
 
     // Make a HTTP request
-    sendData(temperature, humidity, moisture, luminosity);
+    sendData(temperature[0], humidity[0], moisture[0], luminosity[0]);
     waitForResponse(30);
 
     delay(1000);

@@ -33,7 +33,7 @@ namespace node
 			virtual void stop() = 0;
 			virtual value_type getValue(const DataType type) = 0;
 
-		private:
+		protected:
 			DataType m_supportedTypes;
 		};
 	}

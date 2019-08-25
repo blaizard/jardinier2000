@@ -59,10 +59,15 @@ namespace node
 
 		iterator end()
 		{
-			return Iterator(*this, N);
+			return Iterator(*this, size());
 		}
 
 		size_t size() const noexcept
+		{
+			return N;
+		}
+
+		size_t capacity() const noexcept
 		{
 			return N;
 		}
@@ -72,7 +77,7 @@ namespace node
 			return m_data[index];
 		}
 
-	private:
+	protected:
 		T m_data[N];
 	};
 }
