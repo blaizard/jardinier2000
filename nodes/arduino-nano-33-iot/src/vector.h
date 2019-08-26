@@ -8,9 +8,11 @@ namespace node
 	template <class T, size_t N>
 	class Vector : public Array<T, N>
 	{
+	protected:
 		using Array<T, N>::m_data;
 		using typename Array<T, N>::iterator;
 		using typename Array<T, N>::const_iterator;
+		using typename Array<T, N>::size_type;
 
 	public:
 		template <class... Args>
@@ -39,17 +41,27 @@ namespace node
 			return const_iterator(*this, size());
 		}
 
-		size_t size() const noexcept
+		size_type size() const noexcept
 		{
 			return m_size;
 		}
 
-		void clear() noexcept
+		bool empty() const noexcept
 		{
-			m_size = 0;
+			return (m_size == 0);
 		}
 
-	private:
-		size_t m_size;
+		void clear() noexcept
+		{
+			resize(0);
+		}
+
+		void resize(const size_t n) noexcept
+		{
+			m_size = min(n, N);
+		}
+
+	protected:
+		size_type m_size;
 	};
 }

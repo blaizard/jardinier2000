@@ -1,7 +1,5 @@
 #pragma once
 
-#include "array.h"
-
 #include <Arduino.h>
 
 /**
@@ -53,22 +51,5 @@ namespace node
 	using string = String;
 	using size_t = uint32_t;
 
-	using PinType = uint8_t;
-
-	enum class DataType : uint8_t
-	{
-		HUMIDITY = 0x01,
-		TEMPERATURE = 0x02,
-		MOISTURE = 0x04,
-		LUMINOSITY = 0x08
-	};
-	DEFINE_ENUM_BITWISE_OPERATORS(DataType, uint8_t);
-
-	struct Data
-	{
-		const DataType m_type;
-		const char* const m_name;
-	};
-
-	extern Array<Data, 4> dataSupported;
+	using pin_type = uint8_t;
 }

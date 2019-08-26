@@ -1,16 +1,20 @@
 #pragma once
 
+#include "types.h"
+
 namespace node
 {
-	template <class T, unsigned int N>
+	template <class T, size_t N>
 	class Array
 	{
-	public:
+	protected:
+		using size_type = size_t;
 
+	public:
 		class Iterator
 		{
 		public:
-			Iterator(Array<T, N>& array, const unsigned int index)
+			Iterator(Array<T, N>& array, const size_type index)
 				: m_array(array), m_index(index)
 			{
 			}
@@ -38,13 +42,13 @@ namespace node
 
 		private:
 			Array<T, N>& m_array;
-			unsigned int m_index;
+			size_type m_index;
 		};
 
 		class ConstIterator
 		{
 		public:
-			ConstIterator(const Array<T, N>& array, const unsigned int index)
+			ConstIterator(const Array<T, N>& array, const size_type index)
 				: m_array(array), m_index(index)
 			{
 			}
@@ -72,7 +76,7 @@ namespace node
 
 		private:
 			const Array<T, N>& m_array;
-			unsigned int m_index;
+			size_type m_index;
 		};
 
 	public:
@@ -105,24 +109,34 @@ namespace node
 			return const_iterator(*this, size());
 		}
 
-		unsigned int size() const noexcept
+		size_type size() const noexcept
 		{
 			return N;
 		}
 
-		unsigned int capacity() const noexcept
+		size_type capacity() const noexcept
 		{
 			return N;
 		}
 
-		T& operator[](const unsigned int index)
+		T& operator[](const size_type index)
 		{
 			return m_data[index];
 		}
 
-		const T& operator[](const unsigned int index) const
+		const T& operator[](const size_type index) const
 		{
 			return m_data[index];
+		}
+
+		T* data()
+		{
+			return m_data;
+		}
+
+		const T* data() const
+		{
+			return m_data;
 		}
 
 	protected:
