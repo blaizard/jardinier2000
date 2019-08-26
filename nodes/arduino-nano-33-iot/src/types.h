@@ -1,5 +1,7 @@
 #pragma once
 
+#include "array.h"
+
 #include <Arduino.h>
 
 /**
@@ -61,4 +63,12 @@ namespace node
 		LUMINOSITY = 0x08
 	};
 	DEFINE_ENUM_BITWISE_OPERATORS(DataType, uint8_t);
+
+	struct Data
+	{
+		const DataType m_type;
+		const char* const m_name;
+	};
+
+	extern Array<Data, 4> dataSupported;
 }

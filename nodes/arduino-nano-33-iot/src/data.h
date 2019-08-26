@@ -17,6 +17,7 @@ namespace node
 		public:
 			using ptr_type = Generator*;
 			using value_type = uint8_t;
+			using name_type = const char*;
 
 			Generator(const DataType supportedTypes)
 					: m_supportedTypes(supportedTypes)
@@ -31,6 +32,10 @@ namespace node
 
 			virtual void start() = 0;
 			virtual void stop() = 0;
+			/**
+			 * \todo need to ensure that the string is literal
+			 */
+			virtual name_type getName() = 0;
 			virtual value_type getValue(const DataType type) = 0;
 
 		protected:

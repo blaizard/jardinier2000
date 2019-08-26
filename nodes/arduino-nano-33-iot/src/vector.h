@@ -10,6 +10,7 @@ namespace node
 	{
 		using Array<T, N>::m_data;
 		using typename Array<T, N>::iterator;
+		using typename Array<T, N>::const_iterator;
 
 	public:
 		template <class... Args>
@@ -30,12 +31,22 @@ namespace node
 
 		iterator end()
 		{
-			return Iterator(*this, size());
+			return iterator(*this, size());
+		}
+
+		const_iterator end() const
+		{
+			return const_iterator(*this, size());
 		}
 
 		size_t size() const noexcept
 		{
 			return m_size;
+		}
+
+		void clear() noexcept
+		{
+			m_size = 0;
 		}
 
 	private:

@@ -1,10 +1,8 @@
 #pragma once
 
-#include "types.h"
-
 namespace node
 {
-	template <class T, size_t N>
+	template <class T, unsigned int N>
 	class Array
 	{
 	public:
@@ -12,23 +10,23 @@ namespace node
 		class Iterator
 		{
 		public:
-			Iterator(Array<T, N>& array, const size_t index)
+			Iterator(Array<T, N>& array, const unsigned int index)
 				: m_array(array), m_index(index)
 			{
 			}
 
-			Iterator& operator++()
+			Iterator& operator++() noexcept
 			{
 				++m_index;
 				return *this;
 			}
 
-			bool operator==(Iterator& it)
+			bool operator==(const Iterator& it) const noexcept
 			{
 				return it.m_index == m_index;
 			}
 
-			bool operator!=(Iterator& it)
+			bool operator!=(const Iterator& it) const noexcept
 			{
 				return !(it == *this);
 			}
@@ -40,11 +38,46 @@ namespace node
 
 		private:
 			Array<T, N>& m_array;
-			size_t m_index;
+			unsigned int m_index;
+		};
+
+		class ConstIterator
+		{
+		public:
+			ConstIterator(const Array<T, N>& array, const unsigned int index)
+				: m_array(array), m_index(index)
+			{
+			}
+
+			ConstIterator& operator++() noexcept
+			{
+				++m_index;
+				return *this;
+			}
+
+			bool operator==(const ConstIterator& it) const noexcept
+			{
+				return it.m_index == m_index;
+			}
+
+			bool operator!=(const ConstIterator& it) const noexcept
+			{
+				return !(it == *this);
+			}
+
+			const T& operator*() const
+			{
+				return m_array[m_index];
+			}
+
+		private:
+			const Array<T, N>& m_array;
+			unsigned int m_index;
 		};
 
 	public:
 		using iterator = Iterator;
+		using const_iterator = ConstIterator;
 
 		template <class... Args>
 		Array(Args&&... args)
@@ -54,25 +87,40 @@ namespace node
 
 		iterator begin()
 		{
-			return Iterator(*this, 0);
+			return iterator(*this, 0);
 		}
 
 		iterator end()
 		{
-			return Iterator(*this, size());
+			return iterator(*this, size());
 		}
 
-		size_t size() const noexcept
+		const_iterator begin() const
+		{
+			return const_iterator(*this, 0);
+		}
+
+		const_iterator end() const
+		{
+			return const_iterator(*this, size());
+		}
+
+		unsigned int size() const noexcept
 		{
 			return N;
 		}
 
-		size_t capacity() const noexcept
+		unsigned int capacity() const noexcept
 		{
 			return N;
 		}
 
-		T& operator[](const size_t index)
+		T& operator[](const unsigned int index)
+		{
+			return m_data[index];
+		}
+
+		const T& operator[](const unsigned int index) const
 		{
 			return m_data[index];
 		}
