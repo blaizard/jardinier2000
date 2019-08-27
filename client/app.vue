@@ -33,12 +33,15 @@
 					for (const sensorId in data[1]) {
 						for (const type in data[1][sensorId]) {
 							sensors[type] = sensors[type] || {};
-							sensors[type][sensorId] = sensors[type][sensorId] || [];
-							sensors[type][sensorId].push({
-								x: new Date(data[0] * 1000),
-								y: data[1][sensorId][type]
-							});
-							this.lastSample = data[1][sensorId][type];
+
+							for (const sensorName in data[1][sensorId][type]) {
+								const sensorVariantId = sensorId + " (" + sensorName + ")";
+								sensors[type][sensorVariantId] = sensors[type][sensorVariantId] || [];
+								sensors[type][sensorVariantId].push({
+									x: new Date(data[0] * 1000),
+									y: data[1][sensorId][type][sensorName]
+								});
+							}
 						}
 					}
 				});
@@ -56,7 +59,6 @@
 			},
 			async addSample() {
 
-				this.lastSample += Math.random() * 2 - 1;
 
 				await this.fetch("/api/v1/sample", {
 					method: "post",
@@ -66,7 +68,7 @@
 					body: JSON.stringify({
 						list: [{
 							timestamp: 0,
-							humidity: this.lastSample
+							humidity: {test: (Math.random() * 255)}
 						}]
 					}),
 					headers: {

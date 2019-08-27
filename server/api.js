@@ -20,7 +20,7 @@ module.exports = class API {
 	/**
 	 * Return the current timestamp with second precision
 	 */
-	getCurrentTimestamp() {
+	getCurrentTimestampS() {
 		return Math.floor(Date.now() / 1000);
 	}
 
@@ -40,14 +40,33 @@ module.exports = class API {
 			Exception.assert(request.body.list instanceof Array, "The list should contain a json formated Array, instead received: " + JSON.stringify(request.body));
 
 			const NodeId = Config.nodes.tokens[options.token];
-			const timestamp = this.getCurrentTimestamp();
+			const timestamp = this.getCurrentTimestampS();
 			const validKeys = {
 				timestamp: "number",
-				temperature: "number",
-				humidity: "number",
-				luminosity: "number",
-				moisture: "number"
+				temperature: { "*": "number" },
+				humidity: { "*": "number" },
+				luminosity: { "*": "number" },
+				moisture: { "*": "number" },
 			}
+
+			const validate = (object, key, rule) => {
+				if (!rule.hasOwnProperty("*")) {
+					Exception.assert(rule.hasOwnProperty(key), () => ("The key '" + key + "' is invalid in " + JSON.stringify(object)));
+				}
+
+				const subRule = (rule.hasOwnProperty(key)) ? rule[key] : rule["*"];
+				if (typeof subRule === "string") {
+					Exception.assert(typeof object[key] === subRule, () => ("The key '" + key + "' is of wrong type in "+ JSON.stringify(object)));
+				}
+				else {
+					Exception.assert(typeof subRule === "object", "Rule for key '" + key + "' must be an object");
+					Exception.assert(typeof object[key] === "object", () => ("Value for key '" + key + "' must be an object in "+ JSON.stringify(object)));
+					for (const subKey in object[key])
+					{
+						validate(object[key], subKey, subRule);
+					}
+				}
+			};
 
 			// Must be a list of entries with relative timestamp
 			for (const i in request.body.list) {
@@ -58,8 +77,7 @@ module.exports = class API {
 				// Validate the type of entries
 				let data = {};
 				for (const key in entry) {
-					Exception.assert(validKeys.hasOwnProperty(key), "The key '" + key + "' is invalid");
-					Exception.assert(typeof entry[key] === validKeys[key], "The key '" + key + "' is of wrong type");
+					validate(entry, key, validKeys);
 					if (key == "timestamp") {
 						continue;
 					}
@@ -67,7 +85,7 @@ module.exports = class API {
 				}
 
 				// Store the timestamp
-				await this.options.timeseries.insert(timestamp + timestampDelta, {
+				await this.options.timeseries.insert(timestamp - timestampDelta, {
 					[NodeId]: data
 				});
 			}
@@ -86,7 +104,7 @@ module.exports = class API {
 				max: 100
 			}, request.query);
 
-			// Return the last 100 points
+			// Return the last 24h (starting from the peviously registered point)
 			const lastTimestamp = await this.options.timeseries.getTimestamp(-1);
 
 			let dataList = [];

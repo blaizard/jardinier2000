@@ -49,20 +49,6 @@
 				this.chart.render();
 			}
 		},
-		computed: {
-			dataListChart() {
-				let dataList = [];
-				for (const name in this.data) {
-					dataList.push({
-						type: "line",
-						name: name,
-						showInLegend: true,
-						dataPoints: this.data[name]
-					})
-				}
-				return dataList;
-			}
-		},
 		mounted() {
 			this.chart = new CanvasJS.Chart(this.$refs.chart, this.charConfig);
 		}

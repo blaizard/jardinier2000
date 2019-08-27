@@ -28,7 +28,7 @@ struct GeneratorData
 // An entry with a timestamp
 struct Snapshot
 {
-  node::time::time_type m_timestamp;
+  node::system::timestamp_type m_timestamp;
   node::Vector<GeneratorData, 4> m_generators;
 };
 
@@ -41,34 +41,47 @@ static Buffer m_buffer;
 
 // If you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-char server[] = "blaizard.com"; // name address for Google (using DNS)
+constexpr const char server[] = "blaizard.com"; // name address for Google (using DNS)
+constexpr int serverPort = 443; // Server port
+constexpr const char serverRoot[] = "/jardinier2000/"; // Server root to access the REST API
+#define Client WiFiSSLClient
+
+// For local development only
+//constexpr const char server[] = "192.168.2.100";
+//constexpr int serverPort = 8001;
+//constexpr const char serverRoot[] = "/";
+//#define Client WiFiClient
 
 struct TopicApp : public ::node::Topic
 {
   static constexpr const char *toString = "app";
 };
 
-void sendData(WiFiSSLClient& client, const char* str)
+bool sendData(Client& client, const char* str)
 {
   {
-    String line = "POST /jardinier2000/api/v1/sample?token=";
-    line += NODE_TOKEN;
-    line += " HTTP/1.1";
-    client.println(line);
+    client.print("POST ");
+    client.print(serverRoot);
+    client.print("api/v1/sample?token=");
+    client.print(NODE_TOKEN);
+    client.println(" HTTP/1.1");
   }
-//  client.println("Cookie: irpath=/jardinier2000");
-  client.println("Host: blaizard.com");
+  {
+    client.print("Host: ");
+    client.println(server);
+  }
   client.println("Content-Type: application/json; charset=utf-8");
   {
-    String line = "Content-Length: ";
-    line += strlen(str);
-    client.println(line);
+    client.print("Content-Length: ");
+    client.println(strlen(str));
   }
   client.println("Connection: close");
   client.println();
   client.println(str);
 
   node::log::info<TopicApp>("Sending: ", str);
+
+  return waitForResponse(client, 30);
 }
 
 /**
@@ -80,11 +93,11 @@ void sendData(WiFiSSLClient& client, const char* str)
  *  ...
  * }
  */
-void snapshotToJson(Buffer& buffer, const Snapshot &snapshot) noexcept
+bool snapshotToJson(Buffer& buffer, const Snapshot &snapshot, const node::system::timestamp_type timestamp) noexcept
 {
   // Fill the timestamps entry
   buffer += "{\"timestamp\":";
-  buffer += snapshot.m_timestamp;
+  buffer += ((timestamp - snapshot.m_timestamp) / 1000);
 
   // Fill the generator data
   for (const auto &supported : node::data::supported)
@@ -118,9 +131,11 @@ void snapshotToJson(Buffer& buffer, const Snapshot &snapshot) noexcept
     }
   }
   buffer += "}";
+
+  return true;
 }
 
-void waitForResponse(WiFiSSLClient &client, int timeoutS)
+bool waitForResponse(Client &client, int timeoutS)
 {
   while (!client.available() && timeoutS > 0)
   {
@@ -135,9 +150,11 @@ void waitForResponse(WiFiSSLClient &client, int timeoutS)
     char c = client.read();
     Serial.write(c);
   }
+
+  return true;
 }
 
-void takeSnapshot(Snapshots& snapshots)
+bool takeSnapshot(Snapshots& snapshots, const node::system::timestamp_type timestamp)
 {
   // Setup the sensors
   node::data::DHT dataDht(PIN_A3);
@@ -156,7 +173,9 @@ void takeSnapshot(Snapshots& snapshots)
   node::Array<node::data::Generator::ptr_type, 3> dataGenerators(&dataDht, &dataPhotoresistor, &dataMoisture);
 
   // Allocate a new entry and get its reference
-  snapshots.push_back({.m_timestamp = 0});
+  snapshots.push_back({
+    .m_timestamp = timestamp
+  });
   auto &generators = snapshots[snapshots.size() - 1].m_generators;
 
   for (auto &data : dataGenerators)
@@ -176,9 +195,11 @@ void takeSnapshot(Snapshots& snapshots)
 
     data->stop();
   }
+
+  return true;
 }
 
-void sendSnapshots(WiFiSSLClient& client, Snapshots& snapshots, Buffer &buffer)
+bool sendSnapshots(Client& client, Snapshots& snapshots, Buffer& buffer, const node::system::timestamp_type timestamp)
 {
   node::size_t index = 0;
   node::size_t previousFullIndex = 0;
@@ -189,7 +210,10 @@ void sendSnapshots(WiFiSSLClient& client, Snapshots& snapshots, Buffer &buffer)
     buffer += (buffer.empty()) ? "{\"list\":[" : ",";
 
     // Fill the buffer
-    snapshotToJson(buffer, snapshots[index]);
+    if (!node::error::assertTrue<TopicApp>(snapshotToJson(buffer, snapshots[index], timestamp), "Error while serializing snapshot"))
+    {
+      return false;
+    }
 
     // Check if buffer is full and revert or go to next
     const bool isFull = (buffer.size() + 3 > buffer.capacity());
@@ -205,20 +229,27 @@ void sendSnapshots(WiFiSSLClient& client, Snapshots& snapshots, Buffer &buffer)
     // Send the buffer if it is full or it is the last one
     if (isFull || index == snapshots.size())
     {
-      node::error::assertTrue<TopicApp>(previousFullIndex < index, "Buffer is too small");
+      if (!node::error::assertTrue<TopicApp>(previousFullIndex < index, "Buffer is too small"))
+      {
+        return false;
+      }
 
       buffer += "]}";
-      sendData(client, buffer.data());
-      waitForResponse(client, 30);
+      if (!node::error::assertTrue<TopicApp>(sendData(client, buffer.data()), "Error while sending data to server"))
+      {
+        return false;
+      }
 
       node::log::info<TopicApp>(buffer.data());
       buffer.clear();
       previousFullIndex = index;
     }
   }
+
+  return true;
 }
 
-void saveSnapshots(Snapshots& snapshots, Buffer& buffer)
+bool saveSnapshots(Snapshots& snapshots, Buffer& buffer, const node::system::timestamp_type timestamp)
 {
   // Connect to the wifi
   node::wifi::Scope scope(SECRET_SSID, SECRET_PASS);
@@ -226,7 +257,7 @@ void saveSnapshots(Snapshots& snapshots, Buffer& buffer)
   // Initialize the Ethernet client library
   // with the IP address and port of the server
   // that you want to connect to (port 80 is default for HTTP):
-  WiFiSSLClient client;
+  Client client;
 
   // Connect to server
   {
@@ -235,26 +266,35 @@ void saveSnapshots(Snapshots& snapshots, Buffer& buffer)
     bool isConnected = false;
     do
     {
-      node::log::info<TopicApp>("Starting connection to server... (", nbAttempt + 1, "/", maxAttempt, ")");
-      isConnected = client.connect(server, 443);
+      node::log::info<TopicApp>("Starting connection to ", server, ":", serverPort, "... (", nbAttempt + 1, "/", maxAttempt, ")");
+      isConnected = client.connect(server, serverPort);
       ++nbAttempt;
     } while (!isConnected && nbAttempt < maxAttempt);
-    node::error::assertTrue<TopicApp>(isConnected, "Failed to connect to server");
+    if (!node::error::assertTrue<TopicApp>(isConnected, "Failed to connect to server"))
+    {
+      return false;
+    }
     node::log::info<TopicApp>("Connected to server");
   }
 
   // Make a HTTP request
-  sendSnapshots(client, snapshots, buffer);
+  sendSnapshots(client, snapshots, buffer, timestamp);
 
   if (!client.connected())
   {
     node::log::info<TopicApp>("Disconnecting from server");
     client.stop();
   }
+
+  return true;
 }
 
 void setup()
 {
+  // Used to be able to reflash the app
+  delay(5000);
+
+  node::system::start();
 }
 
 void loop()
@@ -262,15 +302,17 @@ void loop()
   Snapshots& snapshots = m_snapshots;
   Buffer& buffer = m_buffer;
 
-  node::system::start();
+  while (true)
+  {
+    takeSnapshot(snapshots, node::system::timestamp);
 
-  delay(5000);
+    // Save and clear the snapshots every 2h
+    if (snapshots.size() >= 4)
+    {
+      saveSnapshots(snapshots, buffer, node::system::timestamp);
+      snapshots.clear();
+    }
 
-  takeSnapshot(snapshots);
-  saveSnapshots(snapshots, buffer);
-  snapshots.clear();
-
-  delay(10000);
-
-  node::system::restartAfter32min();
+    node::system::sleepFor32min();
+  }
 }
