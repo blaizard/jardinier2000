@@ -302,6 +302,16 @@ void loop()
   Snapshots& snapshots = m_snapshots;
   Buffer& buffer = m_buffer;
 
+  takeSnapshot(snapshots, node::system::timestamp);
+  saveSnapshots(snapshots, buffer, node::system::timestamp);
+  delay(5000);
+  takeSnapshot(snapshots, node::system::timestamp);
+  saveSnapshots(snapshots, buffer, node::system::timestamp);
+  delay(5000);
+  takeSnapshot(snapshots, node::system::timestamp);
+  saveSnapshots(snapshots, buffer, node::system::timestamp);
+  delay(5000);
+
   while (true)
   {
     takeSnapshot(snapshots, node::system::timestamp);

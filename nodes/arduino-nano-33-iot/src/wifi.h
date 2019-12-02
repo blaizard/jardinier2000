@@ -12,6 +12,9 @@ namespace node
 			static constexpr const char* toString = "wifi";
 		};
 
+		void sleep();
+		void wakeUp();
+
 		class Scope
 		{
 		public:

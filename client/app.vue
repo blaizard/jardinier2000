@@ -1,5 +1,12 @@
 <template>
 	<div>
+		<!--<Donut :value="donutValue" style="height: 370px; width: 100%;"></Donut>//-->
+		Legend Right
+		<Plot :value="plotValue" :config="{layout: 'legend-right'}" style="height: 300px; width: 100%;"></Plot>
+		Legend Left
+		<Plot :value="plotValue" :config="{layout: 'legend-left'}" style="height: 300px; width: 100%;"></Plot>
+		Dates (format X)
+		<Plot :value="plotValue" :config="{formatX: formatXToDate}" style="height: 300px; width: 100%;"></Plot>
 		<button @click="addSample">Add Sample</button>
 		<div v-for="data, index in dataPerType" :key="index">
 			<CanvasJs :data="data" :title="index"></CanvasJs>
@@ -11,10 +18,12 @@
 	"use strict"
 
 	import CanvasJs from "./canvasjs.vue"
+	import Donut from "[lib]/vue/components/graph/donut.vue"
+	import Plot from "[lib]/vue/components/graph/plot.vue"
 
 	export default {
 		components: {
-			CanvasJs
+			CanvasJs, Donut, Plot
 		},
 		data: function() {
 			return {
@@ -27,6 +36,41 @@
 			this.fetchSensorData();
 		},
 		computed: {
+			donutValue() {
+				return [
+					{caption: "Hello", value: 0.1, color: "red"},
+					{caption: "Friend", value: 0.2, color: "blue"},
+					{caption: "Me", value: 0.7, color: "green"}];
+			},
+			plotValue() {
+				let series = [];
+				for (const name in this.dataPerType["humidity"]) {
+					series.push({
+						caption: name,
+						values: this.dataPerType["humidity"][name].map((value) => [value.x, value.y])
+					});
+				}
+				return series;
+
+				/*let series2 = [];
+				for (const name in {"test-0": true, "test-1": true, "test-2": true, "test-3": true, "test-4": true, "test-5": true, "test-6": true, "test-7": true, "test-8": true, "test-9": true, "test-10": true, "test-11": true}) {
+					let y = Math.random() * 50;
+					let values = [];
+					for (let x=0; x<10; ++x) {
+						values.push([x + Math.random() - 0.5, y]);
+						y += Math.random() * 2 - 1;
+					}
+					series2.push({
+						caption: name,
+						values: values
+					});
+				}
+
+				return series2;*/
+				/*return [
+					{caption: "Hello", values: [[0, 0], [1, 5], [2, 31], [3, 45], [4, 1], [5, 56], [6, 23]], color: "red"}
+				];*/
+			},
 			dataPerType() {
 				let sensors = {};
 				this.dataList.forEach((data) => {
@@ -49,6 +93,9 @@
 			}
 		},
 		methods: {
+			formatXToDate(x) {
+				return (new Date(x)).toISOString().slice(-13, -5);
+			},
 			async fetchSensorData() {
 				this.dataList = await this.fetch("/api/v1/sample", {
 					method: "get",
@@ -58,8 +105,6 @@
 				setTimeout(this.fetchSensorData, this.fetchPeriodMs);
 			},
 			async addSample() {
-
-
 				await this.fetch("/api/v1/sample", {
 					method: "post",
 					query: {
@@ -123,4 +168,5 @@
 </script>
 
 <style lang="scss">
+	@import "~[lib]/vue/components/graph/style/index.scss";
 </style>

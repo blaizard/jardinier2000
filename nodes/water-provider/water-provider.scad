@@ -3,22 +3,22 @@ use <threads.scad>;
 thickness = 1;
 
 // Tube
-tubeInnerWidth = 3;
+tubeInnerWidth = 4;
 tubeConnectionInnerWidth = 2; //tubeInnerWidth - 2 * thickness;
-tubeConnectionOuterWidth = tubeInnerWidth + 1;
+tubeConnectionOuterWidth = tubeInnerWidth + 2;
 
 // Axis ending
 axisEndingHeight = 2;
 axisEndingWidth = tubeConnectionInnerWidth + 2;
 
 // Axis
-axisDiameter = 3;
+axisDiameter = 4;
 
 // Gear
 gearPitch = 2;
 gearToothTopSize = 0.5;
 gearToothRootSize = 0.5;
-gearToothHeight = 1;
+gearToothHeight = 2;
 
 // Case
 caseWidth = 20;
@@ -64,14 +64,38 @@ module axisEnding()
     }
 }
 
+module axisWaterBridge()
+{
+    axisWaterBridgeWidth = caseWidth - thickness * 2 - caseWidth / 4;
+    axisWaterBridgeRadius = 10;
+    axisWaterBridgeDepth = caseDepth - thickness * 2 - 0.5;
+    axisWaterBridgeThickness = 1;
+
+    translate([-axisWaterBridgeWidth / 2, 0, axisWaterBridgeRadius])
+    {
+        rotate(a=90, v = [0, 1, 0])
+        {
+            difference()
+            {
+                cylinder(h=axisWaterBridgeWidth, r=axisWaterBridgeRadius, center=false, $fn=100);
+                cylinder(h=axisWaterBridgeWidth, r=axisWaterBridgeRadius - axisWaterBridgeThickness, center=false, $fn=100);
+                translate([-axisWaterBridgeRadius * 2 + sqrt(axisWaterBridgeRadius*axisWaterBridgeRadius - axisWaterBridgeDepth*axisWaterBridgeDepth/4), -axisWaterBridgeRadius - 0.1, -0.1])
+                {
+                    cube([axisWaterBridgeRadius * 2, axisWaterBridgeRadius * 2 + 0.2, caseWidth + 0.2]);
+                }
+            }
+        }
+    }
+}
+
 module threadAxis(length)
 {
-    metric_thread(diameter=axisDiameter + 1, pitch=0.5, length=length);
+    metric_thread(diameter=axisDiameter + 2, pitch=1, length=length);
 }
 
 module threadGear(length)
 {
-    metric_thread(diameter=axisDiameter + 1 + 0.1, pitch=0.5, length=length);
+    metric_thread(diameter=axisDiameter + 2 + 0.1, pitch=1, length=length);
 }
 
 module axis()
@@ -80,9 +104,14 @@ module axis()
     axisThreadsOffset = caseTopHeight - thickness;
     axisThreadsLength = 2;
  
+    // Small water bridge
     translate([0, 0, axisLength - axisEndingHeight / 2])
     {
         axisEnding();
+        rotate(a=5, v=[0, 1, 0])
+        {
+            axisWaterBridge();
+        }
     }
     cylinder(h=axisLength - axisThreadsOffset - axisThreadsLength, r=axisDiameter / 2, center=false, $fn=100);
     translate([0, 0, axisLength - axisThreadsOffset - axisThreadsLength])
@@ -132,7 +161,7 @@ module gearAxis()
     
     difference()
     {
-        gear(4, gearAxisHeight);
+        gear(6, gearAxisHeight);
         translate([0, 0, -1])
         {
             threadGear(gearAxisHeight + 2);
@@ -193,7 +222,6 @@ module caseTop()
         {
             cylinder(h=thickness + 0.2, r=axisDiameter / 2 + 0.5, center=false, $fn=100);
         }
-        
     }
 }
 
@@ -201,11 +229,30 @@ difference()
 {
     union()
     {
-        //tubeConnection(5);
-        //axisEnding();
-        translate([0, 0, thickness]) color("red") axis();
-        translate([0, 0, caseMiddleHeight + caseBottomHeight]) color("yellow") caseTop();
-        translate([0, 0, caseBottomHeight]) gearAxis(5);
+        //translate([0, 0, thickness]) color("red") axis();
+        //translate([0, 0, caseMiddleHeight + caseBottomHeight]) color("yellow") caseTop();
+      //  translate([0, 0, caseBottomHeight]) gearAxis();
     }
-    translate([-caseWidth / 2 - 1, 0, -1]) cube([caseWidth + 2, 10, 100]);
+    //translate([-caseWidth / 2 - 1, 0, -100 + caseMiddleHeight + caseBottomHeight + caseTopHeight - thickness]) cube([caseWidth + 2, 10, 100]);
+    //translate([-caseWidth / 2 - 1, -10, -1]) cube([caseWidth + 2, 10, 100]);
 }
+
+
+
+difference()
+{
+    metric_thread(diameter=12, pitch=2, length=15, thread_size=3);
+    translate([0, 0, -1]) cylinder(h=6, r=6 / 2, center=false, $fn=100);
+    
+    translate([0, 0, 4.9]) group()
+    {
+        difference()
+        {
+            cylinder(h=1.5, r=5 / 2, center=false, $fn=100);
+            translate([-3, 0.5, -1]) cube([6, 6, 3]);
+        }
+        translate([-1.5, -1, -1]) cube([3, 3, 3]);
+    }
+}
+
+
