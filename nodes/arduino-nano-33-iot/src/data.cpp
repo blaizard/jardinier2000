@@ -1,6 +1,6 @@
 #include "data.h"
 
-node::Array<node::data::Data, 4> node::data::supported(
+node::Array<node::data::Data, 5> node::data::supported(
 	node::data::Data{
 		.m_type = node::data::Type::HUMIDITY,
 		.m_name = "humidity"
@@ -16,5 +16,9 @@ node::Array<node::data::Data, 4> node::data::supported(
 	node::data::Data{
 		.m_type = node::data::Type::TEMPERATURE,
 		.m_name = "temperature"
+	},
+	node::data::Data{
+		.m_type = node::data::Type::BATTERY,
+		.m_name = "battery"
 	}
 );

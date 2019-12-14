@@ -4,7 +4,7 @@
 #include "types.h"
 #include "log.h"
 
-void TC5_Handler();
+void TC3_Handler();
 void WDT_Handler();
 
 namespace node

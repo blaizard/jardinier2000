@@ -18,7 +18,8 @@ namespace node
 			HUMIDITY = 0x01,
 			TEMPERATURE = 0x02,
 			MOISTURE = 0x04,
-			LUMINOSITY = 0x08
+			LUMINOSITY = 0x08,
+			BATTERY = 0x10
 		};
 		DEFINE_ENUM_BITWISE_OPERATORS(Type, uint8_t);
 
@@ -27,7 +28,7 @@ namespace node
 			const Type m_type;
 			const char* const m_name;
 		};
-		extern Array<Data, 4> supported;
+		extern Array<Data, 5> supported;
 
 		class Generator
 		{

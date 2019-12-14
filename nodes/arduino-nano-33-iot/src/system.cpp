@@ -4,10 +4,10 @@
 
 uint32_t node::system::timestamp = 0;
 
-void TC5_Handler()
+void TC3_Handler()
 {
 	++node::system::timestamp;
-	TC5->COUNT16.INTFLAG.bit.MC0 = 1;
+	TC3->COUNT16.INTFLAG.bit.MC0 = 1;
 }
 
 void WDT_Handler()
@@ -63,42 +63,42 @@ namespace
 	void timerStop()
 	{
 		// Disbale the IRQ
-		NVIC_DisableIRQ(TC5_IRQn);
-		NVIC_ClearPendingIRQ(TC5_IRQn);
+		NVIC_DisableIRQ(TC3_IRQn);
+		NVIC_ClearPendingIRQ(TC3_IRQn);
 
-		TC5->COUNT16.CTRLA.reg = TC_CTRLA_SWRST;
-		while (TC5->COUNT16.STATUS.bit.SYNCBUSY);
-		while (TC5->COUNT16.CTRLA.bit.SWRST);
+		TC3->COUNT16.CTRLA.reg = TC_CTRLA_SWRST;
+		while (TC3->COUNT16.STATUS.bit.SYNCBUSY);
+		while (TC3->COUNT16.CTRLA.bit.SWRST);
 	}
 
 	template <uint32_t genClk>
 	void timerSetup(const uint32_t sampleRate)
 	{
-		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_GEN(genClk) | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_ID_TC4_TC5;
+		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_GEN(genClk) | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_ID_TCC2_TC3;
 		while (GCLK->STATUS.bit.SYNCBUSY);
 
 		// Reset the timer
 		timerStop();
 
 		// Set Timer counter Mode to 16 bits
-		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
-		// Set TC5 mode as match frequency
-		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_WAVEGEN_MFRQ;
-		//set prescaler and enable TC5
-		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV1 | TC_CTRLA_ENABLE;
-		//set TC5 timer counter based off of the system clock and the user defined sample rate or waveform
-		TC5->COUNT16.CC[0].reg = (uint16_t) (SystemCoreClock / sampleRate - 1);
-		while (TC5->COUNT16.STATUS.bit.SYNCBUSY);
+		TC3->COUNT16.CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
+		// Set TC3 mode as match frequency
+		TC3->COUNT16.CTRLA.reg |= TC_CTRLA_WAVEGEN_MFRQ;
+		//set prescaler and enable TC3
+		TC3->COUNT16.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV1 | TC_CTRLA_ENABLE;
+		//set TC3 timer counter based off of the system clock and the user defined sample rate or waveform
+		TC3->COUNT16.CC[0].reg = (uint16_t) (SystemCoreClock / sampleRate - 1);
+		while (TC3->COUNT16.STATUS.bit.SYNCBUSY);
 
 		 // Configure interrupt request
-		NVIC_DisableIRQ(TC5_IRQn);
-		NVIC_ClearPendingIRQ(TC5_IRQn);
-		NVIC_SetPriority(TC5_IRQn, 0);
-		NVIC_EnableIRQ(TC5_IRQn);
+		NVIC_DisableIRQ(TC3_IRQn);
+		NVIC_ClearPendingIRQ(TC3_IRQn);
+		NVIC_SetPriority(TC3_IRQn, 0);
+		NVIC_EnableIRQ(TC3_IRQn);
 
-		 // Enable the TC5 interrupt request
-		TC5->COUNT16.INTENSET.bit.MC0 = 1;
-		while (TC5->COUNT16.STATUS.bit.SYNCBUSY);
+		 // Enable the TC3 interrupt request
+		TC3->COUNT16.INTENSET.bit.MC0 = 1;
+		while (TC3->COUNT16.STATUS.bit.SYNCBUSY);
 	}
 
 	void watchdogClear()
@@ -166,6 +166,9 @@ void node::system::start()
 	// Switch on builtin LED
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
+
+	// GCLK4 = 8MHz
+	::gclkSetup<4, GCLK_GENCTRL_SRC_OSC8M, 0, 0>();
 
 	// Setup the timer for the timestamp at 1KHz
 	::timerSetup<0>(1000);

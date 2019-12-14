@@ -4,6 +4,11 @@
 
 namespace node
 {
+	namespace system
+	{
+		extern ::node::uint32_t timestamp;
+	}
+
 	namespace log
 	{
 		namespace internal
@@ -24,6 +29,9 @@ namespace node
 				if (Serial)
 				{
 					node::string message;
+					message += "[";
+					message += node::system::timestamp;
+					message += "] ";
 					message += pre;
 					message += "[";
 					message += Topic::toString;

@@ -154,14 +154,62 @@ bool waitForResponse(Client &client, int timeoutS)
   return true;
 }
 
+	template <uint32_t genClk>
+	void moistureSensorClock(const uint32_t sampleRate)
+	{
+		GCLK->CLKCTRL.reg = GCLK_CLKCTRL_GEN(genClk) | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_ID_TC4_TC5;
+		while (GCLK->STATUS.bit.SYNCBUSY);
+
+		TC5->COUNT16.CTRLA.reg = TC_CTRLA_SWRST;
+		while (TC5->COUNT16.STATUS.bit.SYNCBUSY);
+		while (TC5->COUNT16.CTRLA.bit.SWRST);
+
+		// Set Timer counter Mode to 16 bits
+		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_MODE_COUNT16;
+		// Set TC5 mode as match frequency
+		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_WAVEGEN_MFRQ;
+		// set prescaler and enable TC5
+		TC5->COUNT16.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV1 | TC_CTRLA_ENABLE;
+		// set TC5 timer counter based off of the system clock and the user defined sample rate or waveform
+		TC5->COUNT16.CC[0].reg = (uint16_t) 2; //(SystemCoreClock / sampleRate - 1);
+		while (TC5->COUNT16.STATUS.bit.SYNCBUSY);
+
+    // Output GCLK on PB11
+    unsigned char* ARRAY_PORT_PINCFG1 = (unsigned char*)&REG_PORT_PINCFG1;
+    unsigned char* ARRAY_PORT_PMUX1 = (unsigned char*)&REG_PORT_PMUX1;
+
+    ARRAY_PORT_PINCFG1[11] |= 1;    /* make PB11 output for TC5 */
+    ARRAY_PORT_PMUX1[5] = 0x40;
+
+    //PORT->Group[1].PMUX[11/2].reg |= PORT_PMUX_PMUXO(MUX_PB11H_GCLK_IO5);
+    //PORT->Group[1].PINCFG[11].reg |= PORT_PINCFG_PMUXEN;
+	}
+
 bool takeSnapshot(Snapshots& snapshots, const node::system::timestamp_type timestamp)
 {
+  // See https://github.com/arduino/ArduinoCore-samd/blob/master/variants/nano_33_iot/variant.cpp
+  static constexpr const int pinD7 = 7; // VCC DHT11
+  static constexpr const int pinD6 = 6;
+  static constexpr const int pinD3 = 3; // PB11: Moisture oscillator 500kHz
+  static constexpr const int pinA0 = 14;
+  static constexpr const int pinA1 = 15;
+  static constexpr const int pinA6 = 20;
+
+  // 500 kHz clock
+  moistureSensorClock<4>(10000);
+
+/*
+Peri.E | Peri.F | Periph.G | Periph.H |
+ |            |                  |        |                 |   EIC  | ADC |  AC | PTC | DAC | SERCOMx | SERCOMx |  TCCx  |  TCCx  |    COM   | AC/GLCK  |
+ |            |                  |        |                 |(EXTINT)|(AIN)|(AIN)|     |     | (x/PAD) | (x/PAD) | (x/WO) | (x/WO) |          |          |
+ | 3          | ~D3              |  PB11  |                 |  *11   |     |     |     |     |         |   4/03  |* TC5/1 | TCC0/5
+*/
   // Setup the sensors
-  node::data::DHT dataDht(PIN_A3);
-  node::data::Analog dataPhotoresistor("photoresistor", PIN_A7, node::data::Type::LUMINOSITY, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
-    return 255 - value;
+  node::data::DHT dataDht(pinD6, pinD7);
+  node::data::Analog dataPhotoresistor("photoresistor", pinA0, node::data::Type::LUMINOSITY, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
+    return value;
   });
-  node::data::Analog dataMoisture("moisture", PIN_A6, node::data::Type::MOISTURE, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
+  node::data::Analog dataMoisture("moisture", pinA6, node::data::Type::MOISTURE, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
     const auto newValue = 255 - value;
     if (newValue > 127)
     {
@@ -169,8 +217,10 @@ bool takeSnapshot(Snapshots& snapshots, const node::system::timestamp_type times
     }
     return (newValue << 1);
   });
-
-  node::Array<node::data::Generator::ptr_type, 3> dataGenerators(&dataDht, &dataPhotoresistor, &dataMoisture);
+  node::data::Analog dataBattery("battery", pinA1, node::data::Type::BATTERY, [](const node::data::Generator::value_type value) -> node::data::Generator::value_type {
+    return value;
+  });
+  node::Array<node::data::Generator::ptr_type, 4> dataGenerators(&dataDht, &dataPhotoresistor, &dataMoisture, &dataBattery);
 
   // Allocate a new entry and get its reference
   snapshots.push_back({
@@ -187,6 +237,7 @@ bool takeSnapshot(Snapshots& snapshots, const node::system::timestamp_type times
     {
       if (data->isSupportedType(supported.m_type))
       {
+        node::log::info<TopicApp>(supported.m_name, ", ", data->getName(), ": ", data->getValue(supported.m_type));
         generators.push_back({.m_type = supported.m_type,
                               .m_value = data->getValue(supported.m_type),
                               .m_name = data->getName()});
@@ -299,13 +350,16 @@ void setup()
 
 void loop()
 {
-  Snapshots& snapshots = m_snapshots;
-  Buffer& buffer = m_buffer;
+  while (true)
+  {  
+    Snapshots& snapshots = m_snapshots;
+    Buffer& buffer = m_buffer;
 
-  takeSnapshot(snapshots, node::system::timestamp);
-  saveSnapshots(snapshots, buffer, node::system::timestamp);
-  delay(5000);
-  takeSnapshot(snapshots, node::system::timestamp);
+    takeSnapshot(snapshots, node::system::timestamp);
+    //saveSnapshots(snapshots, buffer, node::system::timestamp);
+    delay(5000);
+  }
+ /* takeSnapshot(snapshots, node::system::timestamp);
   saveSnapshots(snapshots, buffer, node::system::timestamp);
   delay(5000);
   takeSnapshot(snapshots, node::system::timestamp);
@@ -324,5 +378,5 @@ void loop()
     }
 
     node::system::sleepFor32min();
-  }
+  }*/
 }
