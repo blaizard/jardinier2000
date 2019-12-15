@@ -29,7 +29,7 @@ struct GeneratorData
 struct Snapshot
 {
   node::system::timestamp_type m_timestamp;
-  node::Vector<GeneratorData, 4> m_generators;
+  node::Vector<GeneratorData, 5> m_generators;
 };
 
 using Snapshots = node::Vector<Snapshot, 32>;
@@ -41,10 +41,12 @@ static Buffer m_buffer;
 
 // If you don't want to use DNS (and reduce your sketch size)
 // use the numeric IP instead of the name for the server:
-constexpr const char server[] = "blaizard.com"; // name address for Google (using DNS)
-constexpr int serverPort = 443; // Server port
-constexpr const char serverRoot[] = "/jardinier2000/"; // Server root to access the REST API
-#define Client WiFiSSLClient
+constexpr const char server[] = "www.blaizard.com"; // name address for Google (using DNS)
+//IPAddress server(104, 154, 152, 26);
+constexpr int serverPort = 8000; // Server port
+constexpr const char serverRoot[] = "/"; //jardinier2000/"; // Server root to access the REST API
+//#define Client WiFiSSLClient
+#define Client WiFiClient
 
 // For local development only
 //constexpr const char server[] = "192.168.2.100";
@@ -195,7 +197,7 @@ bool takeSnapshot(Snapshots& snapshots, const node::system::timestamp_type times
   static constexpr const int pinA1 = 15;
   static constexpr const int pinA6 = 20;
 
-  // 500 kHz clock
+  // ~600 kHz clock
   moistureSensorClock<4>(10000);
 
 /*
@@ -227,6 +229,8 @@ Peri.E | Peri.F | Periph.G | Periph.H |
     .m_timestamp = timestamp
   });
   auto &generators = snapshots[snapshots.size() - 1].m_generators;
+
+  node::log::info<TopicApp>("**** Measurements ****");
 
   for (auto &data : dataGenerators)
   {
@@ -350,16 +354,10 @@ void setup()
 
 void loop()
 {
-  while (true)
-  {  
-    Snapshots& snapshots = m_snapshots;
-    Buffer& buffer = m_buffer;
+  Snapshots& snapshots = m_snapshots;
+  Buffer& buffer = m_buffer;
 
-    takeSnapshot(snapshots, node::system::timestamp);
-    //saveSnapshots(snapshots, buffer, node::system::timestamp);
-    delay(5000);
-  }
- /* takeSnapshot(snapshots, node::system::timestamp);
+  takeSnapshot(snapshots, node::system::timestamp);
   saveSnapshots(snapshots, buffer, node::system::timestamp);
   delay(5000);
   takeSnapshot(snapshots, node::system::timestamp);
@@ -378,5 +376,5 @@ void loop()
     }
 
     node::system::sleepFor32min();
-  }*/
+  }
 }

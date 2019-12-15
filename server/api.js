@@ -47,6 +47,7 @@ module.exports = class API {
 				humidity: { "*": "number" },
 				luminosity: { "*": "number" },
 				moisture: { "*": "number" },
+				battery: { "*": "number" },
 			}
 
 			const validate = (object, key, rule) => {
